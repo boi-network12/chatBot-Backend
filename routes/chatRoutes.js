@@ -163,4 +163,52 @@ router.delete("/:id", authMiddleware, async (req, res) => {
   }
 });
 
+// In your router file (chat.js)
+
+// Add new route for editing messages
+router.put("/:chatId/message/:messageIndex", authMiddleware, async (req, res) => {
+  try {
+    const { chatId, messageIndex } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    // Find the chat
+    const chat = await Chat.findOne({ _id: chatId, user: userId });
+    if (!chat) {
+      return res.status(404).json({ 
+        success: false,
+        error: "Chat not found"
+      });
+    }
+
+    // Check if message exists and is from user
+    if (messageIndex >= chat.messages.length || 
+        chat.messages[messageIndex].role !== "user") {
+      return res.status(400).json({ 
+        success: false,
+        error: "Invalid message index or message not editable"
+      });
+    }
+
+    // Update the message content
+    chat.messages[messageIndex].content = content;
+    chat.messages[messageIndex].timestamp = new Date();
+    
+    await chat.save();
+
+    res.json({ 
+      success: true,
+      message: chat.messages[messageIndex],
+      chatId: chat._id
+    });
+  } catch (error) {
+    console.error("Edit Message Error:", error);
+    res.status(500).json({ 
+      success: false,
+      error: "Error editing message",
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
